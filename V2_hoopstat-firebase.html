@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HoopStat — Live</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --orange:#E85D04;--orange-l:#FF8C42;
+      --dk:#0D0D0D;--dk2:#1A1A1A;--dk3:#252525;--dk4:#303030;
+      --tx:#F0EDE6;--mu:#888880;--gr:#2ECC71;--rd:#E74C3C;--bl:#3498DB;
+    }
+    html,body{background:var(--dk);color:var(--tx);font-family:'DM Sans',sans-serif;min-height:100vh}
+
+    /* ── ÉCRAN DE CONNEXION ── */
+    #loginScreen{
+      position:fixed;inset:0;background:var(--dk);z-index:999;
+      display:flex;align-items:center;justify-content:center;padding:24px;
+    }
+    .login-box{
+      background:var(--dk2);border:1px solid var(--dk4);border-radius:16px;
+      padding:40px 36px;width:100%;max-width:420px;
+    }
+    .login-logo{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:3px;color:var(--orange);margin-bottom:4px}
+    .login-sub{font-size:13px;color:var(--mu);margin-bottom:32px}
+    .login-label{font-size:11px;letter-spacing:1.2px;color:var(--mu);text-transform:uppercase;margin-bottom:8px;display:block}
+    .login-inp{
+      width:100%;background:var(--dk3);border:1px solid var(--dk4);border-radius:8px;
+      color:var(--tx);font-size:15px;padding:12px 14px;outline:none;transition:.2s;
+      font-family:'DM Sans',sans-serif;margin-bottom:16px;
+    }
+    .login-inp:focus{border-color:var(--orange)}
+    .login-inp.code{font-family:'DM Mono',monospace;font-size:18px;letter-spacing:4px;text-align:center;text-transform:uppercase}
+    .login-btn{
+      width:100%;background:var(--orange);color:#fff;border:none;border-radius:8px;
+      padding:13px;font-size:15px;font-weight:500;cursor:pointer;transition:.2s;
+      font-family:'DM Sans',sans-serif;margin-top:4px;
+    }
+    .login-btn:hover{background:var(--orange-l)}
+    .login-btn:disabled{opacity:.5;cursor:not-allowed}
+    .login-err{font-size:13px;color:var(--rd);margin-top:10px;min-height:18px;text-align:center}
+    .login-divider{border:none;border-top:1px solid var(--dk4);margin:28px 0}
+    .login-hint{font-size:12px;color:var(--mu);line-height:1.6}
+    .login-hint strong{color:var(--tx)}
+    .login-spinner{display:none;width:20px;height:20px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ── SETUP FIREBASE ── */
+    #setupScreen{
+      position:fixed;inset:0;background:var(--dk);z-index:998;
+      display:none;align-items:center;justify-content:center;padding:24px;
+    }
+    .setup-box{
+      background:var(--dk2);border:1px solid var(--dk4);border-radius:16px;
+      padding:40px 36px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;
+    }
+    .setup-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:var(--orange);margin-bottom:6px}
+    .setup-desc{font-size:13px;color:var(--mu);margin-bottom:28px;line-height:1.6}
+    .step-block{background:var(--dk3);border-radius:10px;padding:16px 18px;margin-bottom:12px;border-left:3px solid var(--orange)}
+    .step-num{font-size:10px;letter-spacing:1px;color:var(--orange);text-transform:uppercase;font-weight:500;margin-bottom:6px}
+    .step-text{font-size:13px;color:var(--tx);line-height:1.7}
+    .step-text a{color:var(--bl);text-decoration:none}
+    .step-text code{background:var(--dk4);padding:2px 7px;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;color:var(--orange-l)}
+    .setup-fields{margin-top:20px}
+    .field-row{margin-bottom:12px}
+    .field-lbl{font-size:11px;letter-spacing:1px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;display:block}
+    .field-inp{
+      width:100%;background:var(--dk3);border:1px solid var(--dk4);border-radius:8px;
+      color:var(--tx);font-size:13px;padding:10px 12px;outline:none;transition:.2s;
+      font-family:'DM Mono',monospace;
+    }
+    .field-inp:focus{border-color:var(--orange)}
+    .setup-actions{display:flex;gap:10px;margin-top:20px}
+    .btn-save-cfg{background:var(--orange);color:#fff;border:none;border-radius:8px;padding:11px 24px;font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.2s}
+    .btn-save-cfg:hover{background:var(--orange-l)}
+    .btn-demo{background:transparent;color:var(--mu);border:1px solid var(--dk4);border-radius:8px;padding:11px 16px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.2s}
+    .btn-demo:hover{border-color:var(--mu);color:var(--tx)}
+    .cfg-err{font-size:13px;color:var(--rd);margin-top:10px}
+
+    /* ── HEADER ── */
+    header{background:var(--dk2);border-bottom:1px solid #333;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+    .logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:var(--orange)}
+    .logo span{color:var(--tx);font-size:12px;font-weight:400;margin-left:10px;font-family:'DM Sans',sans-serif;letter-spacing:0}
+    .header-right{display:flex;align-items:center;gap:16px}
+    .user-chip{font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px}
+    .user-dot{width:8px;height:8px;border-radius:50%;background:var(--gr);flex-shrink:0}
+    .sync-badge{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;letter-spacing:.5px;background:rgba(46,204,113,.12);color:var(--gr);border:1px solid rgba(46,204,113,.3);display:flex;align-items:center;gap:5px}
+    .sync-badge.syncing{background:rgba(255,193,7,.12);color:#FFC107;border-color:rgba(255,193,7,.3)}
+    .sync-badge.offline{background:rgba(231,76,60,.12);color:var(--rd);border-color:rgba(231,76,60,.3)}
+    .sync-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse 1.5s infinite}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+
+    /* ── NAV ── */
+    nav{display:flex;gap:2px;padding:14px 24px 0;background:var(--dk2);border-bottom:1px solid #333;overflow-x:auto}
+    .nav-btn{padding:8px 22px;font-size:13px;font-weight:500;border-radius:6px 6px 0 0;border:none;cursor:pointer;background:transparent;color:var(--mu);transition:.2s;white-space:nowrap;font-family:'DM Sans',sans-serif}
+    .nav-btn:hover{color:var(--tx);background:var(--dk3)}
+    .nav-btn.active{background:var(--dk);color:var(--orange);border-bottom:2px solid var(--orange)}
+
+    /* ── PAGES ── */
+    .page{display:none;padding:24px;max-width:1200px;margin:0 auto}
+    .page.active{display:block}
+
+    /* ── COURT SELECTOR ── */
+    .section-label{font-size:11px;letter-spacing:1.5px;color:var(--mu);text-transform:uppercase;margin-bottom:10px}
+    .court-grid{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+    .court-btn{width:44px;height:44px;border-radius:8px;border:1.5px solid var(--dk4);background:var(--dk2);color:var(--mu);font-size:14px;font-weight:500;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;position:relative}
+    .court-btn:hover{border-color:var(--orange);color:var(--orange)}
+    .court-btn.active{background:var(--orange);border-color:var(--orange);color:#fff}
+    .court-btn.has-data{border-color:var(--gr);color:var(--gr)}
+    .court-btn.has-data.active{background:var(--gr);border-color:var(--gr);color:#fff}
+    .court-btn .owner-dot{position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--bl)}
+
+    /* ── MATCH PANEL ── */
+    .match-panel{background:var(--dk2);border-radius:14px;border:1px solid var(--dk4);overflow:hidden}
+    .match-header{background:var(--dk3);padding:16px 22px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--dk4);flex-wrap:wrap;gap:10px}
+    .terrain-label{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--orange)}
+    .status-pill{font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;letter-spacing:.5px;background:rgba(46,204,113,.12);color:var(--gr);border:1px solid rgba(46,204,113,.3)}
+    .editor-info{font-size:12px;color:var(--mu);display:flex;align-items:center;gap:5px}
+
+    .teams-row{display:grid;grid-template-columns:1fr auto 1fr;gap:20px;padding:22px;align-items:center}
+    .team-col{display:flex;flex-direction:column;gap:4px}
+    .team-col.right{text-align:right}
+    .team-inp{background:transparent;border:none;border-bottom:1.5px solid var(--dk4);color:var(--tx);font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;width:100%;padding:4px 0;outline:none;transition:.2s}
+    .team-inp:focus{border-bottom-color:var(--orange)}
+    .team-inp.right{text-align:right}
+    .team-inp:read-only{opacity:.5;cursor:not-allowed}
+    .vs{font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--dk4);text-align:center}
+
+    .scoreboard{display:flex;align-items:center;justify-content:center;gap:24px;padding:0 22px 22px}
+    .score-num{font-family:'Bebas Neue',sans-serif;font-size:80px;line-height:1;min-width:90px;text-align:center}
+    .score-sep{font-family:'Bebas Neue',sans-serif;font-size:52px;color:var(--dk4)}
+    .score-btns{display:flex;flex-direction:column;gap:6px}
+    .sc-btn{width:38px;height:30px;border-radius:7px;border:1px solid var(--dk4);background:var(--dk3);color:var(--tx);font-size:18px;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;line-height:1}
+    .sc-btn:hover:not(:disabled){background:var(--orange);border-color:var(--orange)}
+    .sc-btn.minus:hover:not(:disabled){background:var(--rd);border-color:var(--rd)}
+    .sc-btn:disabled{opacity:.3;cursor:not-allowed}
+
+    .stats-wrap{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--dk4);border-top:1px solid var(--dk4)}
+    .stats-col{background:var(--dk2);padding:18px 22px}
+    .stats-col-title{font-size:10px;letter-spacing:1.5px;color:var(--mu);text-transform:uppercase;margin-bottom:14px;font-weight:500}
+    .stat-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .stat-name{font-size:13px;color:var(--mu)}
+    .stat-ctrl{display:flex;align-items:center;gap:8px}
+    .stat-val{font-family:'DM Mono',monospace;font-size:17px;font-weight:500;min-width:30px;text-align:center}
+    .mini-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--dk4);background:var(--dk3);color:var(--tx);font-size:14px;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif}
+    .mini-btn:hover:not(:disabled){background:var(--orange);border-color:var(--orange)}
+    .mini-btn.minus:hover:not(:disabled){background:var(--rd);border-color:var(--rd)}
+    .mini-btn:disabled{opacity:.3;cursor:not-allowed}
+    .pct-row{margin-top:10px;font-size:12px;color:var(--mu)}
+    .pct-val{font-family:'DM Mono',monospace;color:var(--tx)}
+
+    .action-bar{padding:16px 22px;border-top:1px solid var(--dk4);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .action-left{font-size:13px;color:var(--mu)}
+    .action-right{display:flex;gap:10px;align-items:center}
+    .btn-primary{background:var(--orange);color:#fff;border:none;border-radius:8px;padding:10px 26px;font-size:14px;font-weight:500;cursor:pointer;transition:.2s;font-family:'DM Sans',sans-serif}
+    .btn-primary:hover:not(:disabled){background:var(--orange-l)}
+    .btn-primary:disabled{opacity:.4;cursor:not-allowed}
+    .btn-secondary{background:transparent;color:var(--mu);border:1px solid var(--dk4);border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer;transition:.2s;font-family:'DM Sans',sans-serif}
+    .btn-secondary:hover:not(:disabled){border-color:var(--rd);color:var(--rd)}
+    .save-ok{font-size:13px;color:var(--gr);opacity:0;transition:opacity .3s}
+    .save-ok.show{opacity:1}
+    .locked-notice{
+      background:rgba(232,93,4,.08);border:1px solid rgba(232,93,4,.25);border-radius:8px;
+      padding:10px 16px;font-size:13px;color:var(--orange);margin:16px 22px 0;
+    }
+
+    /* ── DASHBOARD ── */
+    .dash-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+    .dash-info{font-size:13px;color:var(--mu)}
+    .btn-refresh{background:transparent;color:var(--mu);border:1px solid var(--dk4);border-radius:8px;padding:7px 16px;font-size:13px;cursor:pointer;transition:.2s;font-family:'DM Sans',sans-serif}
+    .btn-refresh:hover{border-color:var(--orange);color:var(--orange)}
+    .cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
+    .match-card{background:var(--dk2);border-radius:12px;border:1px solid var(--dk4);overflow:hidden;transition:.2s}
+    .match-card:hover{border-color:#444;transform:translateY(-2px)}
+    .card-top{padding:12px 16px;background:var(--dk3);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--dk4)}
+    .card-terrain{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;color:var(--orange)}
+    .card-meta{font-size:11px;color:var(--mu);display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+    .card-editor{color:var(--bl);font-size:11px}
+    .card-scores{display:flex;align-items:center;justify-content:space-between;padding:16px}
+    .card-team{flex:1}
+    .card-team.right{text-align:right}
+    .card-tname{font-size:14px;font-weight:500}
+    .card-tname.ghost{color:var(--mu)}
+    .card-score{font-family:'Bebas Neue',sans-serif;font-size:44px;line-height:1.1}
+    .card-sep{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--dk4);padding:0 10px}
+    .card-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px 16px}
+    .cs{background:var(--dk3);border-radius:8px;padding:10px 12px}
+    .cs-lbl{font-size:10px;letter-spacing:1px;color:var(--mu);text-transform:uppercase;margin-bottom:6px}
+    .cs-line{display:flex;justify-content:space-between;font-size:12px;margin-top:3px}
+    .cs-team{color:var(--mu)}
+    .cs-num{font-family:'DM Mono',monospace;font-weight:500}
+    .empty-dash{grid-column:1/-1;text-align:center;padding:70px 20px;color:var(--mu)}
+    .empty-icon{font-size:48px;margin-bottom:14px;opacity:.35}
+
+    /* ── HISTORIQUE ── */
+    .table-wrap{background:var(--dk2);border-radius:12px;border:1px solid var(--dk4);overflow:auto}
+    table.hist{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
+    table.hist th{padding:10px 16px;text-align:left;font-size:10px;letter-spacing:1.2px;color:var(--mu);font-weight:500;border-bottom:1px solid var(--dk4);text-transform:uppercase}
+    table.hist td{padding:12px 16px;border-bottom:1px solid #222;vertical-align:middle}
+    table.hist tr:last-child td{border-bottom:none}
+    table.hist tr:hover td{background:rgba(255,255,255,.02)}
+    .pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;background:rgba(232,93,4,.15);color:var(--orange);border:1px solid rgba(232,93,4,.25)}
+    .winner{font-size:12px;color:var(--gr)}
+    .mono{font-family:'DM Mono',monospace}
+    .no-data{text-align:center;padding:50px;color:var(--mu);font-size:14px}
+
+    /* ── DEMO BANNER ── */
+    .demo-banner{background:rgba(52,152,219,.1);border:1px solid rgba(52,152,219,.3);border-radius:8px;padding:10px 16px;font-size:13px;color:var(--bl);margin-bottom:18px;display:none}
+    .demo-banner.show{display:block}
+
+    @media(max-width:600px){
+      .teams-row{grid-template-columns:1fr auto 1fr;gap:10px;padding:14px}
+      .score-num{font-size:56px;min-width:60px}
+      .scoreboard{gap:14px;padding:0 14px 14px}
+      .stats-wrap{grid-template-columns:1fr}
+      .login-box,.setup-box{padding:28px 20px}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ ÉCRAN SETUP FIREBASE ══ -->
+<div id="setupScreen">
+  <div class="setup-box">
+    <div class="setup-title">Configuration Firebase</div>
+    <div class="setup-desc">Suivez ces 4 étapes pour connecter HoopStat à votre base de données Firebase. À faire une seule fois.</div>
+
+    <div class="step-block">
+      <div class="step-num">Étape 1</div>
+      <div class="step-text">Rendez-vous sur <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> et créez un nouveau projet (désactivez Google Analytics, inutile ici).</div>
+    </div>
+    <div class="step-block">
+      <div class="step-num">Étape 2</div>
+      <div class="step-text">Dans votre projet : <strong>Build → Realtime Database → Create database</strong>. Choisissez la région la plus proche, puis sélectionnez <code>Start in test mode</code>.</div>
+    </div>
+    <div class="step-block">
+      <div class="step-num">Étape 3</div>
+      <div class="step-text">Allez dans <strong>Project Settings ⚙ → Your apps → Add app → Web &lt;/&gt;</strong>. Donnez un nom, puis copiez les valeurs affichées dans le bloc <code>firebaseConfig</code>.</div>
+    </div>
+    <div class="step-block">
+      <div class="step-num">Étape 4</div>
+      <div class="step-text">Collez chaque valeur ci-dessous, puis cliquez sur <strong>Enregistrer et lancer</strong>.</div>
+    </div>
+
+    <div class="setup-fields">
+      <div class="field-row"><label class="field-lbl">API Key</label><input class="field-inp" id="cfg_apiKey" placeholder="AIzaSy..."/></div>
+      <div class="field-row"><label class="field-lbl">Auth Domain</label><input class="field-inp" id="cfg_authDomain" placeholder="monprojet.firebaseapp.com"/></div>
+      <div class="field-row"><label class="field-lbl">Database URL</label><input class="field-inp" id="cfg_databaseURL" placeholder="https://monprojet-default-rtdb.firebaseio.com"/></div>
+      <div class="field-row"><label class="field-lbl">Project ID</label><input class="field-inp" id="cfg_projectId" placeholder="monprojet-12345"/></div>
+      <div class="field-row"><label class="field-lbl">Storage Bucket</label><input class="field-inp" id="cfg_storageBucket" placeholder="monprojet.appspot.com"/></div>
+      <div class="field-row"><label class="field-lbl">Messaging Sender ID</label><input class="field-inp" id="cfg_messagingSenderId" placeholder="123456789"/></div>
+      <div class="field-row"><label class="field-lbl">App ID</label><input class="field-inp" id="cfg_appId" placeholder="1:123456789:web:abc123"/></div>
+    </div>
+
+    <div class="setup-actions">
+      <button class="btn-save-cfg" onclick="saveFirebaseConfig()">Enregistrer et lancer</button>
+      <button class="btn-demo" onclick="launchDemo()">Mode démo (local uniquement)</button>
+    </div>
+    <div class="cfg-err" id="cfgErr"></div>
+  </div>
+</div>
+
+<!-- ══ ÉCRAN DE CONNEXION ══ -->
+<div id="loginScreen" style="display:none">
+  <div class="login-box">
+    <div class="login-logo">HOOPSTAT</div>
+    <div class="login-sub">Live Basketball Tracker</div>
+
+    <label class="login-label">Votre prénom / identifiant</label>
+    <input class="login-inp" id="loginName" type="text" placeholder="ex : Marc" maxlength="20"/>
+
+    <label class="login-label">Code événement</label>
+    <input class="login-inp code" id="loginCode" type="text" placeholder="XXXX" maxlength="8"/>
+
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Rejoindre l'événement</button>
+    <div class="login-err" id="loginErr"></div>
+
+    <hr class="login-divider"/>
+    <div class="login-hint">
+      <strong>Organisateur :</strong> partagez le code événement à tous vos saisisseurs.<br/>
+      Chacun ouvre ce fichier HTML sur son appareil et entre le même code.
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<header>
+  <div class="logo">HOOPSTAT <span>Live Basketball Tracker</span></div>
+  <div class="header-right">
+    <div class="user-chip"><div class="user-dot"></div><span id="headerUser">—</span></div>
+    <div class="sync-badge" id="syncBadge"><div class="sync-dot"></div><span id="syncLabel">Connexion…</span></div>
+  </div>
+</header>
+
+<nav>
+  <button class="nav-btn active" onclick="showPage('saisie')">Saisie match</button>
+  <button class="nav-btn" onclick="showPage('dashboard')">Tableau de bord</button>
+  <button class="nav-btn" onclick="showPage('historique')">Historique</button>
+</nav>
+
+<!-- ══ PAGE SAISIE ══ -->
+<div class="page active" id="page-saisie">
+  <div class="demo-banner" id="demoBanner">Mode démo — les données ne sont pas partagées avec d'autres utilisateurs.</div>
+
+  <div class="section-label">Sélectionner votre terrain</div>
+  <div class="court-grid" id="courtGrid"></div>
+
+  <div id="lockedNotice" class="locked-notice" style="display:none">
+    Ce terrain est géré par <strong id="lockedBy">—</strong>. Vous pouvez le consulter en lecture seule.
+  </div>
+
+  <div class="match-panel">
+    <div class="match-header">
+      <div class="terrain-label" id="terrainLabel">TERRAIN 1</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div class="editor-info" id="editorInfo" style="display:none">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="#3498DB" stroke-width="1.5"/></svg>
+          <span id="editorName">—</span>
+        </div>
+        <div class="status-pill">En cours</div>
+      </div>
+    </div>
+
+    <div class="teams-row">
+      <div class="team-col">
+        <input class="team-inp" id="t1name" type="text" placeholder="ÉQUIPE A" maxlength="18" oninput="onNameChange()"/>
+      </div>
+      <div class="vs">VS</div>
+      <div class="team-col right">
+        <input class="team-inp right" id="t2name" type="text" placeholder="ÉQUIPE B" maxlength="18" oninput="onNameChange()"/>
+      </div>
+    </div>
+
+    <div class="scoreboard">
+      <div class="score-btns">
+        <button class="sc-btn" id="sc1plus" onclick="chScore(1,1)">+</button>
+        <button class="sc-btn minus" id="sc1minus" onclick="chScore(1,-1)">−</button>
+      </div>
+      <div class="score-num" id="sc1">0</div>
+      <div class="score-sep">:</div>
+      <div class="score-num" id="sc2">0</div>
+      <div class="score-btns">
+        <button class="sc-btn" id="sc2plus" onclick="chScore(2,1)">+</button>
+        <button class="sc-btn minus" id="sc2minus" onclick="chScore(2,-1)">−</button>
+      </div>
+    </div>
+
+    <div class="stats-wrap">
+      <div class="stats-col">
+        <div class="stats-col-title" id="st1title">ÉQUIPE A — STATISTIQUES</div>
+        <div class="stat-row">
+          <span class="stat-name">Tirs tentés</span>
+          <div class="stat-ctrl">
+            <button class="mini-btn minus" id="b_s1shots_m" onclick="chStat(1,'shots',-1)">−</button>
+            <span class="stat-val" id="s1_shots">0</span>
+            <button class="mini-btn" id="b_s1shots_p" onclick="chStat(1,'shots',1)">+</button>
+          </div>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">Tirs réussis</span>
+          <div class="stat-ctrl">
+            <button class="mini-btn minus" id="b_s1made_m" onclick="chStat(1,'made',-1)">−</button>
+            <span class="stat-val" id="s1_made">0</span>
+            <button class="mini-btn" id="b_s1made_p" onclick="chStat(1,'made',1)">+</button>
+          </div>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">Pertes de balle</span>
+          <div class="stat-ctrl">
+            <button class="mini-btn minus" id="b_s1to_m" onclick="chStat(1,'to',-1)">−</button>
+            <span class="stat-val" id="s1_to">0</span>
+            <button class="mini-btn" id="b_s1to_p" onclick="chStat(1,'to',1)">+</button>
+          </div>
+        </div>
+        <div class="pct-row">% réussite : <span class="pct-val" id="pct1">—</span></div>
+      </div>
+
+      <div class="stats-col">
+        <div class="stats-col-title" id="st2title">ÉQUIPE B — STATISTIQUES</div>
+        <div class="stat-row">
+          <span class="stat-name">Tirs tentés</span>
+          <div class="stat-ctrl">
+            <button class="mini-btn minus" id="b_s2shots_m" onclick="chStat(2,'shots',-1)">−</button>
+            <span class="stat-val" id="s2_shots">0</span>
+            <button class="mini-btn" id="b_s2shots_p" onclick="chStat(2,'shots',1)">+</button>
+          </div>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">Tirs réussis</span>
+          <div class="stat-ctrl">
+            <button class="mini-btn minus" id="b_s2made_m" onclick="chStat(2,'made',-1)">−</button>
+            <span class="stat-val" id="s2_made">0</span>
+            <button class="mini-btn" id="b_s2made_p" onclick="chStat(2,'made',1)">+</button>
+          </div>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">Pertes de balle</span>
+          <div class="stat-ctrl">
+            <button class="mini-btn minus" id="b_s2to_m" onclick="chStat(2,'to',-1)">−</button>
+            <span class="stat-val" id="s2_to">0</span>
+            <button class="mini-btn" id="b_s2to_p" onclick="chStat(2,'to',1)">+</button>
+          </div>
+        </div>
+        <div class="pct-row">% réussite : <span class="pct-val" id="pct2">—</span></div>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <div class="action-left" id="lastSaveInfo">Pas encore sauvegardé</div>
+      <div class="action-right">
+        <span class="save-ok" id="saveMsg">✓ Synchronisé</span>
+        <button class="btn-secondary" id="btnReset" onclick="resetCourt()">Réinitialiser</button>
+        <button class="btn-primary" id="btnSave" onclick="saveCourt()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAGE DASHBOARD ══ -->
+<div class="page" id="page-dashboard">
+  <div class="dash-topbar">
+    <span class="dash-info" id="dashInfo">Synchronisation temps réel active</span>
+    <button class="btn-refresh" onclick="renderDashboard()">Actualiser</button>
+  </div>
+  <div class="cards-grid" id="cardsGrid">
+    <div class="empty-dash"><div class="empty-icon">🏀</div><p>Aucun match en cours.<br/>Commencez la saisie sur un terrain !</p></div>
+  </div>
+</div>
+
+<!-- ══ PAGE HISTORIQUE ══ -->
+<div class="page" id="page-historique">
+  <div class="table-wrap">
+    <table class="hist">
+      <thead>
+        <tr>
+          <th>Terrain</th><th>Équipe A</th><th>Score</th><th>Équipe B</th>
+          <th>Tirs A</th><th>Réussite A</th><th>Pertes A</th>
+          <th>Tirs B</th><th>Réussite B</th><th>Pertes B</th>
+          <th>Résultat</th><th>Saisie par</th><th>Heure</th>
+        </tr>
+      </thead>
+      <tbody id="histBody">
+        <tr><td colspan="13" class="no-data">Aucune donnée — enregistrez un match pour commencer.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// ══ CONFIG & STATE ══════════════════════════════════════════════════
+const N = 10;
+const CFG_KEY = 'hs_firebase_cfg';
+const SESSION_KEY = 'hs_session';
+
+let db = null;
+let demoMode = false;
+let eventCode = '';
+let userName = '';
+let currentCourt = 1;
+let isLocked = false;
+
+// Data en mémoire
+let courts = {};
+let history = [];
+
+for (let i = 1; i <= N; i++) {
+  courts[i] = { t1:'', t2:'', sc1:0, sc2:0, s1:{shots:0,made:0,to:0}, s2:{shots:0,made:0,to:0}, savedBy:'', ts:null };
+}
+
+// ══ INIT ════════════════════════════════════════════════════════════
+// Config Firebase intégrée — les utilisateurs arrivent directement sur la connexion
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyAvq6jHPEYua389BTPRgmQSQc0PlpScsT0",
+  authDomain:        "hoopstat-50519.firebaseapp.com",
+  databaseURL:       "https://hoopstat-50519-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:         "hoopstat-50519",
+  storageBucket:     "hoopstat-50519.firebasestorage.app",
+  messagingSenderId: "779327387851",
+  appId:             "1:779327387851:web:ae280c5d932daf3a81c34e"
+};
+
+function init() {
+  const savedSession = getSavedSession();
+
+  if (savedSession) {
+    userName = savedSession.name;
+    eventCode = savedSession.code;
+    connectFirebase(FIREBASE_CONFIG);
+    return;
+  }
+
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+// ══ FIREBASE CONFIG ═════════════════════════════════════════════════
+function getSavedConfig() {
+  try { return JSON.parse(localStorage.getItem(CFG_KEY)); } catch(e) { return null; }
+}
+function getSavedSession() {
+  try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)); } catch(e) { return null; }
+}
+
+function saveFirebaseConfig() {
+  const fields = ['apiKey','authDomain','databaseURL','projectId','storageBucket','messagingSenderId','appId'];
+  const cfg = {};
+  for (const f of fields) {
+    const v = document.getElementById('cfg_'+f).value.trim();
+    if (!v) { document.getElementById('cfgErr').textContent = 'Veuillez remplir tous les champs.'; return; }
+    cfg[f] = v;
+  }
+  if (!cfg.databaseURL.includes('firebaseio.com') && !cfg.databaseURL.includes('firebasedatabase.app')) {
+    document.getElementById('cfgErr').textContent = 'L\'URL de la base semble incorrecte. Vérifiez et réessayez.';
+    return;
+  }
+  try {
+    localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+    document.getElementById('setupScreen').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+  } catch(e) {
+    document.getElementById('cfgErr').textContent = 'Erreur de sauvegarde : ' + e.message;
+  }
+}
+
+function launchDemo() {
+  demoMode = true;
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+// ══ LOGIN ════════════════════════════════════════════════════════════
+function doLogin() {
+  const name = document.getElementById('loginName').value.trim();
+  const code = document.getElementById('loginCode').value.trim().toUpperCase();
+  const err = document.getElementById('loginErr');
+  const btn = document.getElementById('loginBtn');
+
+  if (!name) { err.textContent = 'Entrez votre prénom.'; return; }
+  if (!demoMode && code.length < 3) { err.textContent = 'Code trop court (minimum 3 caractères).'; return; }
+
+  userName = name;
+  eventCode = demoMode ? 'DEMO' : code;
+
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ name: userName, code: eventCode }));
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="login-spinner" style="display:block"></div>';
+  err.textContent = '';
+
+  if (demoMode) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('demoBanner').classList.add('show');
+    launchApp();
+    return;
+  }
+
+  connectFirebase(FIREBASE_CONFIG);
+}
+
+// ══ CONNEXION FIREBASE ═══════════════════════════════════════════════
+function connectFirebase(cfg) {
+  try {
+    let app;
+    try { app = firebase.app(); } catch(e) { app = firebase.initializeApp(cfg); }
+    db = firebase.database(app);
+
+    setSyncStatus('syncing', 'Connexion…');
+
+    // Test de connexion
+    db.ref('.info/connected').on('value', snap => {
+      if (snap.val() === true) {
+        setSyncStatus('online', 'Synchronisé');
+        if (document.getElementById('loginScreen').style.display !== 'none') {
+          document.getElementById('loginScreen').style.display = 'none';
+          launchApp();
+        }
+      } else {
+        setSyncStatus('offline', 'Hors ligne');
+      }
+    });
+
+    // Écoute temps réel de tous les terrains
+    const ref = db.ref(`events/${eventCode}/courts`);
+    ref.on('value', snap => {
+      const data = snap.val() || {};
+      for (let i = 1; i <= N; i++) {
+        if (data[i]) courts[i] = { ...courts[i], ...data[i] };
+      }
+      buildCourtGrid();
+      if (document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
+      if (document.getElementById('page-historique').classList.contains('active')) renderHistory();
+      loadUI();
+    });
+
+    // Écoute historique
+    db.ref(`events/${eventCode}/history`).on('value', snap => {
+      const raw = snap.val();
+      if (raw) {
+        history = Object.values(raw).sort((a,b) => (b.tsRaw||0)-(a.tsRaw||0));
+        if (document.getElementById('page-historique').classList.contains('active')) renderHistory();
+      }
+    });
+
+  } catch(e) {
+    console.error(e);
+    document.getElementById('loginErr').textContent = 'Erreur Firebase : ' + e.message;
+    const btn = document.getElementById('loginBtn');
+    if (btn) { btn.disabled = false; btn.textContent = 'Rejoindre l\'événement'; }
+    setSyncStatus('offline', 'Erreur');
+  }
+}
+
+function setSyncStatus(state, label) {
+  const badge = document.getElementById('syncBadge');
+  const lbl = document.getElementById('syncLabel');
+  badge.className = 'sync-badge' + (state !== 'online' ? ' ' + state : '');
+  lbl.textContent = label;
+}
+
+// ══ LANCEMENT APP ════════════════════════════════════════════════════
+function launchApp() {
+  document.getElementById('headerUser').textContent = userName;
+  buildCourtGrid();
+  loadUI();
+}
+
+// ══ NAVIGATION ═══════════════════════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  const idx = ['saisie','dashboard','historique'].indexOf(id);
+  document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+  if (id === 'dashboard') renderDashboard();
+  if (id === 'historique') renderHistory();
+}
+
+// ══ COURT SELECTOR ════════════════════════════════════════════════════
+function buildCourtGrid() {
+  const g = document.getElementById('courtGrid');
+  g.innerHTML = '';
+  for (let i = 1; i <= N; i++) {
+    const d = courts[i];
+    const isMine = d.savedBy === userName;
+    const hasOwner = d.savedBy && d.savedBy !== userName;
+    const cls = ['court-btn',
+      i === currentCourt ? 'active' : '',
+      d.ts ? 'has-data' : ''
+    ].filter(Boolean).join(' ');
+
+    const b = document.createElement('button');
+    b.className = cls;
+    b.textContent = i;
+    b.title = d.savedBy ? `Terrain ${i} — ${d.savedBy}` : `Terrain ${i}`;
+    if (hasOwner) {
+      const dot = document.createElement('div');
+      dot.className = 'owner-dot';
+      dot.title = 'Géré par ' + d.savedBy;
+      b.appendChild(dot);
+    }
+    b.onclick = () => { currentCourt = i; buildCourtGrid(); loadUI(); };
+    g.appendChild(b);
+  }
+}
+
+// ══ LOAD UI ═══════════════════════════════════════════════════════════
+function loadUI() {
+  const d = courts[currentCourt];
+  const isMine = !d.savedBy || d.savedBy === userName;
+  isLocked = !isMine;
+
+  document.getElementById('terrainLabel').textContent = 'TERRAIN ' + currentCourt;
+  document.getElementById('t1name').value = d.t1 || '';
+  document.getElementById('t2name').value = d.t2 || '';
+  document.getElementById('sc1').textContent = d.sc1 || 0;
+  document.getElementById('sc2').textContent = d.sc2 || 0;
+  document.getElementById('s1_shots').textContent = d.s1?.shots || 0;
+  document.getElementById('s1_made').textContent = d.s1?.made || 0;
+  document.getElementById('s1_to').textContent = d.s1?.to || 0;
+  document.getElementById('s2_shots').textContent = d.s2?.shots || 0;
+  document.getElementById('s2_made').textContent = d.s2?.made || 0;
+  document.getElementById('s2_to').textContent = d.s2?.to || 0;
+
+  // Éditeur actif
+  const edInfo = document.getElementById('editorInfo');
+  const edName = document.getElementById('editorName');
+  if (d.savedBy && d.savedBy !== userName) {
+    edInfo.style.display = 'flex';
+    edName.textContent = d.savedBy;
+  } else {
+    edInfo.style.display = 'none';
+  }
+
+  // Notice verrouillage
+  const notice = document.getElementById('lockedNotice');
+  if (isLocked) {
+    notice.style.display = 'block';
+    document.getElementById('lockedBy').textContent = d.savedBy;
+  } else {
+    notice.style.display = 'none';
+  }
+
+  // Désactiver contrôles si verrouillé
+  const allBtns = ['sc1plus','sc1minus','sc2plus','sc2minus',
+    'b_s1shots_m','b_s1shots_p','b_s1made_m','b_s1made_p','b_s1to_m','b_s1to_p',
+    'b_s2shots_m','b_s2shots_p','b_s2made_m','b_s2made_p','b_s2to_m','b_s2to_p',
+    'btnSave','btnReset'];
+  allBtns.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = isLocked; });
+  document.getElementById('t1name').readOnly = isLocked;
+  document.getElementById('t2name').readOnly = isLocked;
+
+  // Last save info
+  const info = document.getElementById('lastSaveInfo');
+  if (d.ts) info.textContent = `Dernière sync : ${d.ts}${d.savedBy ? ' par ' + d.savedBy : ''}`;
+  else info.textContent = 'Pas encore sauvegardé';
+
+  updatePct(); updateTitles();
+}
+
+function onNameChange() {
+  if (isLocked) return;
+  courts[currentCourt].t1 = document.getElementById('t1name').value;
+  courts[currentCourt].t2 = document.getElementById('t2name').value;
+  updateTitles();
+}
+
+function updateTitles() {
+  const d = courts[currentCourt];
+  document.getElementById('st1title').textContent = (d.t1 || 'ÉQUIPE A') + ' — STATISTIQUES';
+  document.getElementById('st2title').textContent = (d.t2 || 'ÉQUIPE B') + ' — STATISTIQUES';
+}
+
+function updatePct() {
+  const d = courts[currentCourt];
+  const s1 = d.s1 || {};
+  const s2 = d.s2 || {};
+  document.getElementById('pct1').textContent = (s1.shots > 0) ? Math.round(s1.made / s1.shots * 100) + '%' : '—';
+  document.getElementById('pct2').textContent = (s2.shots > 0) ? Math.round(s2.made / s2.shots * 100) + '%' : '—';
+}
+
+// ══ SCORE & STATS ══════════════════════════════════════════════════════
+function chScore(team, delta) {
+  if (isLocked) return;
+  const d = courts[currentCourt];
+  if (team === 1) { d.sc1 = Math.max(0, (d.sc1||0) + delta); document.getElementById('sc1').textContent = d.sc1; }
+  else { d.sc2 = Math.max(0, (d.sc2||0) + delta); document.getElementById('sc2').textContent = d.sc2; }
+}
+
+function chStat(team, key, delta) {
+  if (isLocked) return;
+  const d = courts[currentCourt];
+  if (!d.s1) d.s1 = {shots:0,made:0,to:0};
+  if (!d.s2) d.s2 = {shots:0,made:0,to:0};
+  const s = team === 1 ? d.s1 : d.s2;
+  s[key] = Math.max(0, (s[key]||0) + delta);
+  document.getElementById('s' + team + '_' + key).textContent = s[key];
+  updatePct();
+}
+
+// ══ SAVE ═══════════════════════════════════════════════════════════════
+async function saveCourt() {
+  if (isLocked) return;
+  const d = courts[currentCourt];
+  d.t1 = document.getElementById('t1name').value || 'Équipe A';
+  d.t2 = document.getElementById('t2name').value || 'Équipe B';
+  d.savedBy = userName;
+  d.ts = new Date().toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+  if (!demoMode && db) {
+    setSyncStatus('syncing', 'Sync…');
+    try {
+      await db.ref(`events/${eventCode}/courts/${currentCourt}`).set(d);
+
+      // Écriture historique
+      const tsRaw = Date.now();
+      await db.ref(`events/${eventCode}/history/${currentCourt}_${tsRaw}`).set({
+        court: currentCourt, ...JSON.parse(JSON.stringify(d)), tsRaw
+      });
+
+      setSyncStatus('online', 'Synchronisé');
+    } catch(e) {
+      setSyncStatus('offline', 'Erreur sync');
+      console.error(e);
+    }
+  } else {
+    history.unshift({ court:currentCourt, ...JSON.parse(JSON.stringify(d)), tsRaw: Date.now() });
+  }
+
+  const msg = document.getElementById('saveMsg');
+  msg.classList.add('show');
+  setTimeout(() => msg.classList.remove('show'), 2500);
+  buildCourtGrid();
+  loadUI();
+}
+
+// ══ RESET ══════════════════════════════════════════════════════════════
+async function resetCourt() {
+  if (isLocked) return;
+  if (!confirm(`Réinitialiser toutes les données du terrain ${currentCourt} ?`)) return;
+  const empty = { t1:'', t2:'', sc1:0, sc2:0, s1:{shots:0,made:0,to:0}, s2:{shots:0,made:0,to:0}, savedBy:'', ts:null };
+  courts[currentCourt] = empty;
+
+  if (!demoMode && db) {
+    try { await db.ref(`events/${eventCode}/courts/${currentCourt}`).set(empty); } catch(e) {}
+  }
+  loadUI(); buildCourtGrid();
+}
+
+// ══ DASHBOARD ══════════════════════════════════════════════════════════
+function renderDashboard() {
+  const grid = document.getElementById('cardsGrid');
+  const active = [];
+  for (let i = 1; i <= N; i++) {
+    const d = courts[i];
+    if (!d.ts && !d.t1 && d.sc1 === 0 && d.sc2 === 0) continue;
+    active.push({ court:i, d });
+  }
+
+  if (!active.length) {
+    grid.innerHTML = '<div class="empty-dash"><div class="empty-icon">🏀</div><p>Aucun match enregistré.<br/>Commencez la saisie sur un terrain !</p></div>';
+    return;
+  }
+
+  grid.innerHTML = active.map(({ court, d }) => {
+    const t1 = d.t1 || 'Équipe A'; const t2 = d.t2 || 'Équipe B';
+    const s1 = d.s1 || {}; const s2 = d.s2 || {};
+    const p1 = s1.shots > 0 ? Math.round(s1.made / s1.shots * 100) + '%' : '—';
+    const p2 = s2.shots > 0 ? Math.round(s2.made / s2.shots * 100) + '%' : '—';
+    const g1 = d.t1 ? 'card-tname' : 'card-tname ghost';
+    const g2 = d.t2 ? 'card-tname' : 'card-tname ghost';
+    let lead = '';
+    if ((d.sc1||0) > (d.sc2||0)) lead = `<span style="color:var(--gr);font-size:11px">▲ ${t1}</span>`;
+    else if ((d.sc2||0) > (d.sc1||0)) lead = `<span style="color:var(--gr);font-size:11px">▲ ${t2}</span>`;
+    return `<div class="match-card">
+      <div class="card-top">
+        <span class="card-terrain">TERRAIN ${court}</span>
+        <div class="card-meta">
+          ${d.savedBy ? `<span class="card-editor">${d.savedBy}</span>` : ''}
+          <span>${d.ts || '—'}</span>
+          ${lead}
+        </div>
+      </div>
+      <div class="card-scores">
+        <div class="card-team"><div class="${g1}">${t1}</div><div class="card-score">${d.sc1||0}</div></div>
+        <div class="card-sep">:</div>
+        <div class="card-team right"><div class="${g2}">${t2}</div><div class="card-score">${d.sc2||0}</div></div>
+      </div>
+      <div class="card-stats-grid">
+        <div class="cs"><div class="cs-lbl">Tirs</div>
+          <div class="cs-line"><span class="cs-team">${t1}</span><span class="cs-num">${s1.made||0}/${s1.shots||0} (${p1})</span></div></div>
+        <div class="cs"><div class="cs-lbl">Tirs</div>
+          <div class="cs-line"><span class="cs-team">${t2}</span><span class="cs-num">${s2.made||0}/${s2.shots||0} (${p2})</span></div></div>
+        <div class="cs"><div class="cs-lbl">Pertes</div>
+          <div class="cs-line"><span class="cs-team">${t1}</span><span class="cs-num">${s1.to||0}</span></div></div>
+        <div class="cs"><div class="cs-lbl">Pertes</div>
+          <div class="cs-line"><span class="cs-team">${t2}</span><span class="cs-num">${s2.to||0}</span></div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const now = new Date().toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  document.getElementById('dashInfo').textContent = 'Dernière actualisation : ' + now + (demoMode ? ' (mode démo)' : ' · temps réel Firebase');
+}
+
+// ══ HISTORIQUE ═════════════════════════════════════════════════════════
+function renderHistory() {
+  const tbody = document.getElementById('histBody');
+  if (!history.length) {
+    tbody.innerHTML = '<tr><td colspan="13" class="no-data">Aucune donnée — enregistrez un match pour commencer.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = history.map(h => {
+    const s1 = h.s1 || {}; const s2 = h.s2 || {};
+    const p1 = s1.shots > 0 ? Math.round(s1.made / s1.shots * 100) + '%' : '—';
+    const p2 = s2.shots > 0 ? Math.round(s2.made / s2.shots * 100) + '%' : '—';
+    let winner = '—';
+    if ((h.sc1||0) > (h.sc2||0)) winner = `<span class="winner">▲ ${h.t1}</span>`;
+    else if ((h.sc2||0) > (h.sc1||0)) winner = `<span class="winner">▲ ${h.t2}</span>`;
+    else winner = '<span style="color:var(--mu)">Égalité</span>';
+    return `<tr>
+      <td><span class="pill">T${h.court}</span></td>
+      <td style="font-weight:500">${h.t1||'—'}</td>
+      <td class="mono" style="font-weight:500">${h.sc1||0} – ${h.sc2||0}</td>
+      <td style="font-weight:500">${h.t2||'—'}</td>
+      <td class="mono">${s1.shots||0}</td>
+      <td class="mono">${p1}</td>
+      <td class="mono">${s1.to||0}</td>
+      <td class="mono">${s2.shots||0}</td>
+      <td class="mono">${p2}</td>
+      <td class="mono">${s2.to||0}</td>
+      <td>${winner}</td>
+      <td style="color:var(--bl);font-size:12px">${h.savedBy||'—'}</td>
+      <td style="color:var(--mu);font-size:12px">${h.ts||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ══ ENTER sur login ════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  ['loginName','loginCode'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  });
+});
+
+init();
+</script>
+</body>
+</html>
